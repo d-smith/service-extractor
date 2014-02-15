@@ -28,8 +28,30 @@ object LineRouter {
           case None =>
             txnMap += (reqNo -> Transaction(0, data, ""))
         }
-      case _ => println("Handler implementation not complete")
+      case ResponseDataPart(reqNo, data) =>
+        txnMap.get(reqNo) match {
+          case Some(txn) =>
+            txnMap += (reqNo -> txn.copy(response = txn.response + data))
+          case None =>
+            txnMap += (reqNo -> Transaction(0,"", data))
+        }
+      case LastResponseDataPart(reqNo, data) =>
+        txnMap.get(reqNo) match {
+          case Some(txn) =>
+            txnMap += (reqNo -> txn.copy(response = txn.response + data))
+          case None =>
+            txnMap += (reqNo -> Transaction(0,"", data))
+        }
+        dumpTxn(reqNo)
     }
+  }
+
+  def dumpTxn(reqNo: String) {
+    val entry = txnMap.get(reqNo).get
+    txnMap -= (reqNo)
+    println(s"txn $reqNo has request ${entry.request} and response ${entry.response}")
+
+    //val xmlRep = xml.XML.loadString(entry.request)
   }
 
   def hasRequest(requestNo: String) : Boolean = {

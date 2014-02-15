@@ -18,7 +18,6 @@ object DumpProcessor extends App {
         if(lineNo == "1") {
           processStartOfNewRequest(request, line)
         } else if(applicationDataFollows(line)) {
-          println("Heads up - data may follow")
           processApplicationData(request)
         }
 
@@ -31,7 +30,7 @@ object DumpProcessor extends App {
     if(!hasRequest(requestNo))
       processRequest(requestNo)
     else
-      processResponse()
+      processResponse(requestNo)
   }
 
   def processRequest(requestNo: String) {
@@ -39,13 +38,33 @@ object DumpProcessor extends App {
     if(appDataLine.contains("Envelope")) {
       while(appDataLine.trim() != "") {
         routeLine(new RequestData(requestNo, appDataLine))
-        appDataLine = lineProcessor.readLine()
+        appDataLine = " " + lineProcessor.readLine().trim()
       }
     }
   }
 
-  def processResponse() {
+  def processResponse(requestNo: String) {
+    var appDataLine = lineProcessor.readLine()
+    if(appDataLine.trim().startsWith("HTTP/1")) {
+      readlinesUntilBlankLineFound()
+      val chunkSize = lineProcessor.readLine()
+      println(s"chunk size be $chunkSize")
+      val dataLine = lineProcessor.readLine().trim()
+      println(dataLine)
+      println(s"data line has length ${dataLine.length}")
+      if((java.lang.Long.decode("0x" + chunkSize.trim()) - dataLine.length) == 1) {
+        routeLine(LastResponseDataPart(requestNo, dataLine))
+      } else {
+        routeLine(ResponseDataPart(requestNo, dataLine))
+      }
+    }
+  }
 
+  def readlinesUntilBlankLineFound() {
+    var line = "not blank"
+    while(line.trim() != "") {
+      line = lineProcessor.readLine()
+    }
   }
 
   def millisFromTimestamp(ts: String) : Long = {

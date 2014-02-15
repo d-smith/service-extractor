@@ -15,5 +15,10 @@ For example, the file might contain:
 
 The service name is extracted from the SOAP request. We could grab it from the SOAPAction head, but that is only set for B2B transactions: web service transations don't set this header.
 
-When grabbing application data, if there are multiple chunks on the response such that a chunk container neither soap tags or elements we might have to figure
-out another way to detect that.
+Also application data doesn't always have a dash line, e.g.
+
+    72 17 1391605207.9357 (0.0371)  S>C V3.1(739)  application_data
+    New TCP connection #73: 10.33.151.39(53843) <-> 10.93.202.30(11001)
+    73 1  1391605207.9391 (0.0311)  C>S V3.1(157)  Handshake
+
+
