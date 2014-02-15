@@ -1,5 +1,7 @@
 package dumpreader
 
+import scala.xml.Node
+
 
 sealed trait RouterEvent
 case class NewServiceCall(requestNo: String, timeStamp: Long) extends RouterEvent
@@ -49,9 +51,13 @@ object LineRouter {
   def dumpTxn(reqNo: String) {
     val entry = txnMap.get(reqNo).get
     txnMap -= (reqNo)
-    println(s"txn $reqNo has request ${entry.request} and response ${entry.response}")
+    println(s"txn $reqNo has request ${trimGaps(entry.request)} and response ${entry.response}")
 
-    //val xmlRep = xml.XML.loadString(entry.request)
+    val xmlRep = xml.XML.loadString(trimGaps(entry.request))
+    val body: Node = (xmlRep \\ "Envelope" \ "Body") head
+    val service = body.child.head.label
+
+    println(s"service is ${service}" )
   }
 
   def hasRequest(requestNo: String) : Boolean = {
@@ -60,6 +66,8 @@ object LineRouter {
       case None => true
     }
   }
+
+  def trimGaps(xml: String) : String = xml.replaceAll("> <", "><")
 
 
 }

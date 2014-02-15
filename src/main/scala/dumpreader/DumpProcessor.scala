@@ -18,7 +18,8 @@ object DumpProcessor extends App {
         if(lineNo == "1") {
           processStartOfNewRequest(request, line)
         } else if(applicationDataFollows(line)) {
-          processApplicationData(request)
+          val nextLine = lineProcessor.readLine()
+          if(isDashLine(nextLine)) processApplicationData(request)
         }
 
       case None =>
@@ -26,7 +27,6 @@ object DumpProcessor extends App {
   }
 
   def processApplicationData(requestNo: String) {
-    skipDashLine()
     if(!hasRequest(requestNo))
       processRequest(requestNo)
     else
@@ -100,7 +100,5 @@ object DumpProcessor extends App {
     if(line.trim().endsWith("application_data")) true else false
   }
 
-  def skipDashLine() {
-    lineProcessor.readLine()
-  }
+  def isDashLine(line: String) : Boolean = line.trim().startsWith("---------------")
 }
