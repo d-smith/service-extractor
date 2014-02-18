@@ -12,6 +12,10 @@ object DumpProcessor extends App {
 
   while(lineProcessor.moreLines()) {
     val line = lineProcessor.readLine
+     processLine(line)
+  }
+
+  def processLine(line: String) {
     extractLineSpec(line) match {
       case Some(spec) =>
         val(request, lineNo) = spec
@@ -19,12 +23,16 @@ object DumpProcessor extends App {
           processStartOfNewRequest(request, line)
         } else if(applicationDataFollows(line)) {
           val nextLine = lineProcessor.readLine()
-          if(isDashLine(nextLine)) processApplicationData(request)
+          if(isDashLine(nextLine))
+            processApplicationData(request)
+          else
+            processLine(nextLine)
         }
 
       case None =>
     }
   }
+
 
   def processApplicationData(requestNo: String) {
     if(!hasRequest(requestNo))
@@ -36,9 +44,13 @@ object DumpProcessor extends App {
   def processRequest(requestNo: String) {
     var appDataLine = lineProcessor.readLine()
     if(appDataLine.contains("Envelope")) {
-      while(appDataLine.trim() != "") {
+      var envelope2 = false
+      var done = false
+      while(!done/*appDataLine.trim() != "" && !envelope2*/) {
         routeLine(new RequestData(requestNo, appDataLine))
         appDataLine = " " + lineProcessor.readLine().trim()
+        if(appDataLine.contains("Envelope") && !envelope2) envelope2 = true
+        else if(appDataLine.trim() =="" && envelope2) done = true
       }
     }
   }
@@ -55,7 +67,15 @@ object DumpProcessor extends App {
       if((java.lang.Long.decode("0x" + chunkSize.trim()) - dataLine.length) == 1) {
         routeLine(LastResponseDataPart(requestNo, dataLine))
       } else {
+        println(s"processing partial response for $requestNo : $dataLine")
         routeLine(ResponseDataPart(requestNo, dataLine))
+      }
+    } else {
+      val trimmedDataLine = appDataLine.trim()
+      if(trimmedDataLine.length == 0) {
+        routeLine(LastResponseDataPart(requestNo, ""))
+      } else {
+        routeLine(ResponseDataPart(requestNo, trimmedDataLine))
       }
     }
   }

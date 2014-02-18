@@ -21,4 +21,4 @@ Also application data doesn't always have a dash line, e.g.
     New TCP connection #73: 10.33.151.39(53843) <-> 10.93.202.30(11001)
     73 1  1391605207.9391 (0.0311)  C>S V3.1(157)  Handshake
 
-
+Note that some soap envelopes can contain empty lines in the middle of the request, for example in notes. Thus we have to look for the end of the soap envelope.
