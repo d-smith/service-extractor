@@ -6,9 +6,18 @@ import scala.io.Source
 
 class LineProcessor private (lineSource: Source ) {
   val lineItor = lineSource.getLines()
+  var bufferedLine: Option[String] = None
 
   def readLine() : String = {
-    lineItor.next()
+    bufferedLine match {
+      case Some(line) => bufferedLine = None; line
+      case None => lineItor.next()
+    }
+  }
+
+  def putReadLine(line: String) {
+    assert(bufferedLine == None)
+    bufferedLine = Some(line)
   }
 
   def moreLines() = lineItor.hasNext

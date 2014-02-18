@@ -17,6 +17,8 @@ case class Transaction(timeStamp: Long, request: String = "", response: String =
 object LineRouter {
   val logger = LoggerFactory.getLogger(this.getClass)
   var txnMap = Map[String, Transaction]()
+  var skippedMalformedResponse = 0
+  var processedCount = 0
 
 
   def routeLine(event: RouterEvent) {
@@ -55,20 +57,22 @@ object LineRouter {
     txnMap -= (reqNo)
 
     val request = trimGaps(entry.request.trim)
-    val response = entry.response
+    val response = entry.response.trim
     val timestamp = entry.timeStamp
 
-    logger.debug(s"txn $reqNo has request $request and response $response")
+    logger.info(s"txn $reqNo has request $request and response $response")
 
     val service = extractServiceName(request)
 
     logger.debug(s"service is ${service}" )
     if(!isWellformed(response)) {
-      logger.warn("Response is not well-formed: " + response)
+      logger.warn(s"Response is not well-formed for request $reqNo: $response")
+      skippedMalformedResponse += 1
+    } else {
+      logger.info(s"request $reqNo: $timestamp $request $response")
+      println(s"$reqNo|$timestamp|$service|$request|$response")
+      processedCount += 1
     }
-
-    //logger.info(s"request $reqNo: ${entry.timeStamp} ${entry.request} ${entry.response}")
-    println(s"$reqNo|$timestamp}|$service|$request|$response")
   }
 
   def extractServiceName(request: String) : String = {
@@ -96,5 +100,6 @@ object LineRouter {
     }
   }
 
-
+  def getMalformedCount() : Int = skippedMalformedResponse
+  def getProcessedCount() : Int = processedCount
 }

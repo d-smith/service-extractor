@@ -8,6 +8,7 @@ object DumpProcessor extends App {
   import LineRouter._
 
   val logger = LoggerFactory.getLogger(this.getClass)
+  val lineSeparator = System.getProperty("line.separator")
 
   if(args.length != 1) throw new Error("Input file not specified")
 
@@ -17,6 +18,8 @@ object DumpProcessor extends App {
     val line = lineProcessor.readLine
      processLine(line)
   }
+
+  println(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
 
   def processLine(line: String) {
     extractLineSpec(line) match {
@@ -54,6 +57,7 @@ object DumpProcessor extends App {
         appDataLine = " " + lineProcessor.readLine().trim()
         if(appDataLine.contains("Envelope") && !envelope2) envelope2 = true
         else if(appDataLine.trim() =="" && envelope2) done = true
+        else if(isDashLine(appDataLine)) done = true
       }
     }
   }
@@ -61,15 +65,21 @@ object DumpProcessor extends App {
   def processResponse(requestNo: String) {
     var appDataLine = lineProcessor.readLine()
     if(appDataLine.trim().startsWith("HTTP/1")) {
+
       readlinesUntilBlankLineFound()
       val chunkSize = lineProcessor.readLine()
       logger.debug(s"chunk size be $chunkSize")
+      /*
       var dataLine = lineProcessor.readLine().trim()
       logger.debug(dataLine)
       logger.debug(s"data line has length ${dataLine.length}")
       if((java.lang.Long.decode("0x" + chunkSize.trim()) - dataLine.length) == 1) {
         routeLine(LastResponseDataPart(requestNo, dataLine))
       } else {
+          //Read the next line if it's blank, read another - should be 0
+
+
+
         logger.debug(s"processing partial response for $requestNo : $dataLine")
         if(dataLine.matches(".+-+$")) {
           logger.debug("trim the trailing dashes...")
@@ -77,14 +87,50 @@ object DumpProcessor extends App {
           logger.debug(s"trimmed data line: $dataLine")
         }
         routeLine(ResponseDataPart(requestNo, dataLine))
+
+        //Otherwise call processLine with it
       }
+      */
+      //Read lines until the 0 line is found or until we find an application_data line
+      var doneReadingResponseData = false
+      var lines = List[String]()
+      while(!doneReadingResponseData) {
+        val line = lineProcessor.readLine().trim()
+        if(applicationDataFollows(line)) {
+          var responseData = lines.foldLeft("") {
+            (l, cl) => if(l == "") cl else l + lineSeparator + cl
+          }
+
+          responseData = removeTrailingDashes(requestNo, responseData)
+
+
+         routeLine(ResponseDataPart(requestNo,responseData))
+         lineProcessor.putReadLine(line)
+         doneReadingResponseData = true
+
+        } else if(line == "0") {
+
+          var responseData = lines.foldLeft("") {
+            (l, cl) => l + lineSeparator + cl
+          }
+
+          responseData = removeTrailingDashes(requestNo, responseData)
+
+          routeLine(LastResponseDataPart(requestNo,responseData))
+          doneReadingResponseData = true
+        } else {
+          lines = lines :+ line
+        }
+      }
+
     } else {
-      var trimmedDataLine = appDataLine.trim()
+      var trimmedDataLine = appDataLine//.trim()
       logger.debug(s"processing $trimmedDataLine")
-      if(trimmedDataLine.length == 0) {
-        routeLine(LastResponseDataPart(requestNo, trimmedDataLine))
+      //if(trimmedDataLine.length() > 4 && trimmedDataLine.charAt(4).equals('0')) {
+      if(trimmedDataLine.length() > 4 && trimmedDataLine.trim.equals("0")) {
+        routeLine(LastResponseDataPart(requestNo, ""))
       } else {
-        routeLine(ResponseDataPart(requestNo, trimmedDataLine))
+        routeLine(ResponseDataPart(requestNo, trimmedDataLine.trim()))
       }
     }
   }
@@ -129,5 +175,19 @@ object DumpProcessor extends App {
     if(line.trim().endsWith("application_data")) true else false
   }
 
-  def isDashLine(line: String) : Boolean = line.trim().startsWith("---------------")
+  def isDashLine(line: String) : Boolean = line.trim() == "---------------------------------------------------------------"
+
+  def removeTrailingDashes(reqNo: String, s: String) : String = {
+    var cleaned = s
+    logger.debug(s"response line for $reqNo is $cleaned")
+    logger.debug("look for trailing dashes")
+    if(cleaned.matches(".+-+$")) {
+      logger.debug("trim the trailing dashes...")
+      cleaned = cleaned.replaceAll("-+$","")
+      logger.debug(s"trimmed data line: $cleaned")
+    }
+    cleaned
+  }
+
+
 }

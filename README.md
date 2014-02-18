@@ -27,3 +27,16 @@ In the output, application data doesn't always have a dash line, e.g.
 
 Note that some soap envelopes can contain empty lines in the middle of the request, for example in notes. Thus we have
 to look for the end of the soap envelope instead of assuming termination from a blank line.
+
+When putting together chunked reponses, an empty line is not enough to denote the last line - need to find the
+0 length identifier.
+
+    ---------------------------------------------------------------
+    102 19 1391605211.7422 (0.0000)  S>C V3.1(22)  application_data
+    ---------------------------------------------------------------
+
+    ---------------------------------------------------------------
+    102 20 1391605211.7422 (0.0000)  S>C V3.1(25)  application_data
+    ---------------------------------------------------------------
+    0
+
