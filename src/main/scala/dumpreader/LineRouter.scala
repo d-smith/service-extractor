@@ -53,15 +53,29 @@ object LineRouter {
   def dumpTxn(reqNo: String) {
     val entry = txnMap.get(reqNo).get
     txnMap -= (reqNo)
-    logger.debug(s"txn $reqNo has request ${trimGaps(entry.request)} and response ${entry.response}")
 
-    val xmlRep = xml.XML.loadString(trimGaps(entry.request))
-    val body: Node = (xmlRep \\ "Envelope" \ "Body") head
-    val service = body.child.head.label
+    val request = trimGaps(entry.request.trim)
+    val response = entry.response
+    val timestamp = entry.timeStamp
+
+    logger.debug(s"txn $reqNo has request $request and response $response")
+
+    val service = extractServiceName(request)
 
     logger.debug(s"service is ${service}" )
+    if(!isWellformed(response)) {
+      logger.warn("Response is not well-formed: " + response)
+    }
+
     //logger.info(s"request $reqNo: ${entry.timeStamp} ${entry.request} ${entry.response}")
-    println(s"$reqNo|${entry.timeStamp}|$service|${trimGaps(entry.request.trim)}|${entry.response.trim}")
+    println(s"$reqNo|$timestamp}|$service|$request|$response")
+  }
+
+  def extractServiceName(request: String) : String = {
+    val xmlRep = xml.XML.loadString(request)
+    val body: Node = (xmlRep \\ "Envelope" \ "Body") head
+    val service = body.child.head.label
+    service
   }
 
   def hasRequest(requestNo: String) : Boolean = {
@@ -72,6 +86,15 @@ object LineRouter {
   }
 
   def trimGaps(xml: String) : String = xml.replaceAll("> <", "><")
+
+  def isWellformed(xmlString: String) : Boolean = {
+    try {
+      xml.XML.loadString(xmlString)
+      true
+    } catch {
+      case _: Throwable => false
+    }
+  }
 
 
 }
