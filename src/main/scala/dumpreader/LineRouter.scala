@@ -1,6 +1,7 @@
 package dumpreader
 
 import scala.xml.Node
+import org.slf4j.LoggerFactory
 
 
 sealed trait RouterEvent
@@ -14,16 +15,17 @@ case class Transaction(timeStamp: Long, request: String = "", response: String =
 }
 
 object LineRouter {
-
+  val logger = LoggerFactory.getLogger(this.getClass)
   var txnMap = Map[String, Transaction]()
+
 
   def routeLine(event: RouterEvent) {
     event match {
       case NewServiceCall(reqNo, ts) =>
-        println(s"New request $reqNo at $ts")
+        logger.debug(s"New request $reqNo at $ts")
         txnMap += (reqNo -> Transaction(ts))
       case RequestData(reqNo, data) =>
-        println(s"App data for request $reqNo: $data")
+        logger.debug(s"App data for request $reqNo: $data")
         txnMap.get(reqNo) match {
           case Some(txn) =>
             txnMap += (reqNo -> txn.copy(request = txn.request + data))
@@ -51,13 +53,15 @@ object LineRouter {
   def dumpTxn(reqNo: String) {
     val entry = txnMap.get(reqNo).get
     txnMap -= (reqNo)
-    println(s"txn $reqNo has request ${trimGaps(entry.request)} and response ${entry.response}")
+    logger.debug(s"txn $reqNo has request ${trimGaps(entry.request)} and response ${entry.response}")
 
     val xmlRep = xml.XML.loadString(trimGaps(entry.request))
     val body: Node = (xmlRep \\ "Envelope" \ "Body") head
     val service = body.child.head.label
 
-    println(s"service is ${service}" )
+    logger.debug(s"service is ${service}" )
+    //logger.info(s"request $reqNo: ${entry.timeStamp} ${entry.request} ${entry.response}")
+    println(s"$reqNo|${entry.timeStamp}|$service|${trimGaps(entry.request.trim)}|${entry.response.trim}")
   }
 
   def hasRequest(requestNo: String) : Boolean = {

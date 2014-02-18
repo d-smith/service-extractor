@@ -9,6 +9,7 @@
     <properties>
         <scala.version>2.10.0</scala.version>
 		<scalatest.version>1.9.1</scalatest.version>
+        <slf4j.version>1.7.6</slf4j.version>
     </properties>
  
     <dependencies>
@@ -23,6 +24,12 @@
             <groupId>org.scala-lang</groupId>
             <artifactId>scala-library</artifactId>
             <version>${scala.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <version>${slf4j.version}</version>
         </dependency>
  
     </dependencies>

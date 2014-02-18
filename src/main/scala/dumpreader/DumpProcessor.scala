@@ -1,10 +1,13 @@
 package dumpreader
 
 import java.io.File
+import org.slf4j.LoggerFactory
 
 
 object DumpProcessor extends App {
   import LineRouter._
+
+  val logger = LoggerFactory.getLogger(this.getClass)
 
   if(args.length != 1) throw new Error("Input file not specified")
 
@@ -46,7 +49,7 @@ object DumpProcessor extends App {
     if(appDataLine.contains("Envelope")) {
       var envelope2 = false
       var done = false
-      while(!done/*appDataLine.trim() != "" && !envelope2*/) {
+      while(!done) {
         routeLine(new RequestData(requestNo, appDataLine))
         appDataLine = " " + lineProcessor.readLine().trim()
         if(appDataLine.contains("Envelope") && !envelope2) envelope2 = true
@@ -60,20 +63,26 @@ object DumpProcessor extends App {
     if(appDataLine.trim().startsWith("HTTP/1")) {
       readlinesUntilBlankLineFound()
       val chunkSize = lineProcessor.readLine()
-      println(s"chunk size be $chunkSize")
-      val dataLine = lineProcessor.readLine().trim()
-      println(dataLine)
-      println(s"data line has length ${dataLine.length}")
+      logger.debug(s"chunk size be $chunkSize")
+      var dataLine = lineProcessor.readLine().trim()
+      logger.debug(dataLine)
+      logger.debug(s"data line has length ${dataLine.length}")
       if((java.lang.Long.decode("0x" + chunkSize.trim()) - dataLine.length) == 1) {
         routeLine(LastResponseDataPart(requestNo, dataLine))
       } else {
-        println(s"processing partial response for $requestNo : $dataLine")
+        logger.debug(s"processing partial response for $requestNo : $dataLine")
+        if(dataLine.matches(".+-+$")) {
+          logger.debug("trim the trailing dashes...")
+          dataLine = dataLine.replaceAll("-+$","")
+          logger.debug(s"trimmed data line: $dataLine")
+        }
         routeLine(ResponseDataPart(requestNo, dataLine))
       }
     } else {
-      val trimmedDataLine = appDataLine.trim()
+      var trimmedDataLine = appDataLine.trim()
+      logger.debug(s"processing $trimmedDataLine")
       if(trimmedDataLine.length == 0) {
-        routeLine(LastResponseDataPart(requestNo, ""))
+        routeLine(LastResponseDataPart(requestNo, trimmedDataLine))
       } else {
         routeLine(ResponseDataPart(requestNo, trimmedDataLine))
       }
