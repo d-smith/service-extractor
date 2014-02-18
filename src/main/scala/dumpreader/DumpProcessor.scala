@@ -124,7 +124,7 @@ object DumpProcessor extends App {
       }
 
     } else {
-      var trimmedDataLine = appDataLine//.trim()
+      var trimmedDataLine = removeTrailingDashes(requestNo, appDataLine)
       logger.debug(s"processing $trimmedDataLine")
       //if(trimmedDataLine.length() > 4 && trimmedDataLine.charAt(4).equals('0')) {
       if(trimmedDataLine.length() > 4 && trimmedDataLine.trim.equals("0")) {
