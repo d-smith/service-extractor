@@ -5,12 +5,12 @@ import org.slf4j.LoggerFactory
 
 
 sealed trait RouterEvent
-case class NewServiceCall(requestNo: String, timeStamp: Long) extends RouterEvent
+case class NewServiceCall(requestNo: String, timeStamp: Double) extends RouterEvent
 case class RequestData(requestNo: String, data: String) extends RouterEvent
 case class ResponseDataPart(requestNo: String, data: String) extends RouterEvent
 case class LastResponseDataPart(requestNo: String, data: String) extends RouterEvent
 
-case class Transaction(timeStamp: Long, request: String = "", response: String = "") {
+case class Transaction(timeStamp: Double, request: String = "", response: String = "") {
   def hasRequest() : Boolean = !request.equals("")
 }
 

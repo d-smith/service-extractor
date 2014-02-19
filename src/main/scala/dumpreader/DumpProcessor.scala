@@ -134,8 +134,8 @@ object DumpProcessor extends App {
     }
   }
 
-  def millisFromTimestamp(ts: String) : Long = {
-    (java.lang.Double.valueOf(ts) * 1000).longValue()
+  def doubleFromTimestamp(ts: String) : Double = {
+    java.lang.Double.valueOf(ts)
   }
 
   def extractLineSpec(line: String) : Option[(String,String)] = {
@@ -159,7 +159,7 @@ object DumpProcessor extends App {
 
   def processStartOfNewRequest(callNo: String, line: String) {
     val connLine = line.split("\\s+")
-    val timestamp = millisFromTimestamp(connLine(2))
+    val timestamp = doubleFromTimestamp(connLine(2))
     routeLine(NewServiceCall(callNo, timestamp))
   }
 
