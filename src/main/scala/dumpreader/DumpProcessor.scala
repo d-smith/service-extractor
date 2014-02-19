@@ -108,13 +108,16 @@ object DumpProcessor extends App {
       }
 
     } else {
-      var trimmedDataLine = removeTrailingDashes(requestNo, appDataLine)
-      logger.debug(s"processing $trimmedDataLine")
-      //if(trimmedDataLine.length() > 4 && trimmedDataLine.charAt(4).equals('0')) {
-      if(trimmedDataLine.length() > 4 && trimmedDataLine.trim.equals("0")) {
+      var dataLine = removeTrailingDashes(requestNo, appDataLine)
+      logger.debug(s"processing $dataLine")
+      if(dataLine.length() > 4 && dataLine.trim.equals("0")) {
         routeLine(LastResponseDataPart(requestNo, ""))
       } else {
-        routeLine(ResponseDataPart(requestNo, trimmedDataLine.trim()))
+        if(isChunkSizeLine(dataLine)) {
+          //Sometimes there's a chunk size... sometimes.
+          dataLine = lineProcessor.readLine()
+        }
+        routeLine(ResponseDataPart(requestNo, dataLine.trim()))
       }
     }
   }
@@ -181,4 +184,5 @@ object DumpProcessor extends App {
   }
 
 
+  def isChunkSizeLine(s: String) : Boolean = s.trim.matches("^[0-9A-Fa-f]+$")
 }
