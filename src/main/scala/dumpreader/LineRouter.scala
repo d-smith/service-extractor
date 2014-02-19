@@ -15,10 +15,13 @@ case class Transaction(timeStamp: Long, request: String = "", response: String =
 }
 
 object LineRouter {
+  import Persistor.persist
+
   val logger = LoggerFactory.getLogger(this.getClass)
   var txnMap = Map[String, Transaction]()
   var skipped = 0
   var processedCount = 0
+  var persistTxns = false
 
 
   def routeLine(event: RouterEvent) {
@@ -57,7 +60,7 @@ object LineRouter {
     txnMap -= (reqNo)
 
     val request = trimGaps(entry.request.trim)
-    val response = entry.response.trim
+    var response = entry.response.trim
     val timestamp = entry.timeStamp
 
     logger.info(s"txn $reqNo has request $request and response $response")
@@ -72,11 +75,16 @@ object LineRouter {
       if(!isWellformed(response)) {
         logger.warn(s"Response is not well-formed for request $reqNo: $response")
         skipped += 1
-      } else {
-        logger.info(s"request $reqNo: $timestamp $request $response")
-        println(s"$reqNo|$timestamp|$service|$request|$response")
-        processedCount += 1
+        response = "<truncated/>"
       }
+
+      logger.info(s"request $reqNo: $timestamp $request $response")
+      println(s"$reqNo|$timestamp|$service|$request|$response")
+      processedCount += 1
+      if(persistTxns) {
+        persist(timestamp, service, request, response)
+      }
+
     }
   }
 
@@ -107,4 +115,8 @@ object LineRouter {
 
   def getMalformedCount() : Int = skipped
   def getProcessedCount() : Int = processedCount
+
+  def persistOnDump() {
+    persistTxns = true
+  }
 }

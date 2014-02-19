@@ -6,12 +6,16 @@ import org.slf4j.LoggerFactory
 
 object DumpProcessor extends App {
   import LineRouter._
+  import Persistor.setDBCredentials
 
   val logger = LoggerFactory.getLogger(this.getClass)
   val lineSeparator = System.getProperty("line.separator")
 
-  if(args.length < 1) throw new Error("Input file not specified")
   if(args.length != 1 && args.length != 4) throw new Error("Need filename arg and optionally db user, password and url")
+  if(args.length == 4) {
+    persistOnDump()
+    setDBCredentials(user = args(1), password = args(2), url = args(3))
+  }
 
   def shutdownHook() : Unit = {
     println(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
