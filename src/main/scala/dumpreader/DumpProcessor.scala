@@ -108,17 +108,18 @@ object DumpProcessor extends App {
       }
 
     } else {
-      var dataLine = removeTrailingDashes(requestNo, appDataLine)
-      logger.debug(s"processing $dataLine")
-      if(dataLine.length() > 4 && dataLine.trim.equals("0")) {
+      if(appDataLine.length() > 4 && appDataLine.trim.equals("0")) {
         routeLine(LastResponseDataPart(requestNo, ""))
       } else {
+        var dataLine = appDataLine
         if(isChunkSizeLine(dataLine)) {
-          //Sometimes there's a chunk size... sometimes.
           dataLine = lineProcessor.readLine()
         }
+
+        dataLine = removeTrailingDashes(requestNo, dataLine)
         routeLine(ResponseDataPart(requestNo, dataLine.trim()))
       }
+
     }
   }
 
@@ -165,7 +166,8 @@ object DumpProcessor extends App {
   def responseDataEnds(s: String) : Boolean = {
     val trimmed = s.trim
     if(trimmed.endsWith("application_data") ||
-      trimmed.endsWith("Handshake") ||
+      startsWithLineSpec(trimmed) ||
+      //trimmed.endsWith("Handshake") ||
       trimmed.startsWith("New TCP connection")) true else false
   }
 
@@ -180,9 +182,26 @@ object DumpProcessor extends App {
       cleaned = cleaned.replaceAll("-+$","")
       logger.debug(s"trimmed data line: $cleaned")
     }
+
     cleaned
   }
 
 
-  def isChunkSizeLine(s: String) : Boolean = s.trim.matches("^[0-9A-Fa-f]+$")
+  def isChunkSizeLine(s: String) : Boolean = {
+    val hex = s.trim.matches("^[0-9A-Fa-f]+$")
+    //logger.warn(s"hex is $hex for $s")
+    hex
+  }
+
+  def startsWithLineSpec(line: String) : Boolean = {
+    val splitLine = line.trim().split("\\s+")
+    splitLine.length match {
+      case x if x < 2 => false
+      case _ =>
+        if(allDigits(splitLine(0)) && allDigits(splitLine(1)))
+          true
+        else
+          false
+    }
+  }
 }
