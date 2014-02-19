@@ -10,7 +10,8 @@ object DumpProcessor extends App {
   val logger = LoggerFactory.getLogger(this.getClass)
   val lineSeparator = System.getProperty("line.separator")
 
-  if(args.length != 1) throw new Error("Input file not specified")
+  if(args.length < 1) throw new Error("Input file not specified")
+  if(args.length != 1 && args.length != 4) throw new Error("Need filename arg and optionally db user, password and url")
 
   def shutdownHook() : Unit = {
     println(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
@@ -43,7 +44,6 @@ object DumpProcessor extends App {
       case None =>
     }
   }
-
 
   def processApplicationData(requestNo: String) {
     if(!hasRequest(requestNo))
@@ -167,7 +167,6 @@ object DumpProcessor extends App {
     val trimmed = s.trim
     if(trimmed.endsWith("application_data") ||
       startsWithLineSpec(trimmed) ||
-      //trimmed.endsWith("Handshake") ||
       trimmed.startsWith("New TCP connection")) true else false
   }
 
@@ -175,33 +174,21 @@ object DumpProcessor extends App {
 
   def removeTrailingDashes(reqNo: String, s: String) : String = {
     var cleaned = s
-    logger.debug(s"response line for $reqNo is $cleaned")
-    logger.debug("look for trailing dashes")
     if(cleaned.matches(".+-+$")) {
-      logger.debug("trim the trailing dashes...")
       cleaned = cleaned.replaceAll("-+$","")
-      logger.debug(s"trimmed data line: $cleaned")
     }
 
     cleaned
   }
 
 
-  def isChunkSizeLine(s: String) : Boolean = {
-    val hex = s.trim.matches("^[0-9A-Fa-f]+$")
-    //logger.warn(s"hex is $hex for $s")
-    hex
-  }
+  def isChunkSizeLine(s: String) : Boolean = s.trim.matches("^[0-9A-Fa-f]+$")
 
   def startsWithLineSpec(line: String) : Boolean = {
     val splitLine = line.trim().split("\\s+")
     splitLine.length match {
       case x if x < 2 => false
-      case _ =>
-        if(allDigits(splitLine(0)) && allDigits(splitLine(1)))
-          true
-        else
-          false
+      case _ => if(allDigits(splitLine(0)) && allDigits(splitLine(1))) true else false
     }
   }
 }
