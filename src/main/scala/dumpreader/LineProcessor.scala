@@ -4,12 +4,14 @@ import java.io.File
 import scala.io.Source
 
 
-class LineProcessor private (lineSource: Source ) {
+class LineProcessor private (lineSource: Source, shutdownHook: => Unit ) {
   val lineItor = lineSource.getLines()
   var bufferedLine: Option[String] = None
 
+
   def readLine() : String = {
-    bufferedLine match {
+    if(!moreLines()) { shutdownHook; "" }
+    else bufferedLine match {
       case Some(line) => bufferedLine = None; line
       case None => lineItor.next()
     }
@@ -25,7 +27,7 @@ class LineProcessor private (lineSource: Source ) {
 
 
 object LineProcessor {
-  def apply(file: File) : LineProcessor = {
-    new LineProcessor(Source.fromFile(file))
+  def apply(file: File, shutdownHook: => Unit) : LineProcessor = {
+    new LineProcessor(Source.fromFile(file), shutdownHook)
   }
 }

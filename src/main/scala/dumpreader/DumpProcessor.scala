@@ -12,7 +12,12 @@ object DumpProcessor extends App {
 
   if(args.length != 1) throw new Error("Input file not specified")
 
-  val lineProcessor = LineProcessor(new File(args(0)))
+  def shutdownHook() : Unit = {
+    println(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
+    System.exit(0)
+  }
+
+  val lineProcessor = LineProcessor(new File(args(0)), shutdownHook)
 
   while(lineProcessor.moreLines()) {
     val line = lineProcessor.readLine
@@ -69,34 +74,13 @@ object DumpProcessor extends App {
       readlinesUntilBlankLineFound()
       val chunkSize = lineProcessor.readLine()
       logger.debug(s"chunk size be $chunkSize")
-      /*
-      var dataLine = lineProcessor.readLine().trim()
-      logger.debug(dataLine)
-      logger.debug(s"data line has length ${dataLine.length}")
-      if((java.lang.Long.decode("0x" + chunkSize.trim()) - dataLine.length) == 1) {
-        routeLine(LastResponseDataPart(requestNo, dataLine))
-      } else {
-          //Read the next line if it's blank, read another - should be 0
 
-
-
-        logger.debug(s"processing partial response for $requestNo : $dataLine")
-        if(dataLine.matches(".+-+$")) {
-          logger.debug("trim the trailing dashes...")
-          dataLine = dataLine.replaceAll("-+$","")
-          logger.debug(s"trimmed data line: $dataLine")
-        }
-        routeLine(ResponseDataPart(requestNo, dataLine))
-
-        //Otherwise call processLine with it
-      }
-      */
-      //Read lines until the 0 line is found or until we find an application_data line
+      //Read lines until the 0 line is found or until we find an application_data line or Handshake line
       var doneReadingResponseData = false
       var lines = List[String]()
       while(!doneReadingResponseData) {
         val line = lineProcessor.readLine().trim()
-        if(applicationDataFollows(line)) {
+        if(responseDataEnds(line)) {
           var responseData = lines.foldLeft("") {
             (l, cl) => if(l == "") cl else l + lineSeparator + cl
           }
@@ -173,6 +157,13 @@ object DumpProcessor extends App {
 
   def applicationDataFollows(line: String) : Boolean = {
     if(line.trim().endsWith("application_data")) true else false
+  }
+
+  def responseDataEnds(s: String) : Boolean = {
+    val trimmed = s.trim
+    if(trimmed.endsWith("application_data") ||
+      trimmed.endsWith("Handshake") ||
+      trimmed.startsWith("New TCP connection")) true else false
   }
 
   def isDashLine(line: String) : Boolean = line.trim() == "---------------------------------------------------------------"

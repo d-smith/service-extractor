@@ -1,5 +1,7 @@
 #File with unmasked data
 ssldump.raw.txt
+multiTruncatedByHandshake.txt
+multiTruncatedNewTCP.txt
 
 
 #atomikos txn logs
