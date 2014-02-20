@@ -24,7 +24,6 @@ case object PersistTxns
 case object PrintStats
 
 class LineRouter extends Actor {
-  import Persistor.persist
 
   val logger = LoggerFactory.getLogger(this.getClass)
   var txnMap = Map[String, Transaction]()
@@ -64,7 +63,7 @@ class LineRouter extends Actor {
         dumpTxn(reqNo)
 
       case PersistTxns => persistTxns = true
-      case PrintStats => println(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
+      case PrintStats => logger.info(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
 
       case HasRequest(reqNo) => sender ! hasRequest(reqNo)
   }
@@ -135,7 +134,6 @@ class TransactionDumper extends Actor {
   def receive = {
     case TxnSpec(persistTxn, reqNo, timestamp, serviceName, request, response) =>
       logger.info(s"request $reqNo: $timestamp $request $response")
-      //println(s"$reqNo|$timestamp|$serviceName|$request|$response")
       if(persistTxn) {
         persist(timestamp, serviceName, request, response)
       }
