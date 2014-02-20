@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory
 import akka.actor.{Props, Actor}
 import dumpreader.Persistor._
 import scala.Some
+import akka.routing.FromConfig
 
 
 sealed trait RouterEvent
@@ -31,7 +32,7 @@ class LineRouter extends Actor {
   var processedCount = 0
   var persistTxns = false
 
-  val txnDumper = context.actorOf(Props[TransactionDumper])
+  val txnDumper = context.actorOf(Props[TransactionDumper] /*.withRouter(FromConfig()), "dump-router"*/)
 
 
   def receive = {
