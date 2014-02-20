@@ -2,7 +2,9 @@ package dumpreader
 
 import scala.xml.Node
 import org.slf4j.LoggerFactory
-import akka.actor.Actor
+import akka.actor.{Props, Actor}
+import dumpreader.Persistor._
+import scala.Some
 
 
 sealed trait RouterEvent
@@ -30,7 +32,7 @@ class LineRouter extends Actor {
   var processedCount = 0
   var persistTxns = false
 
-  //val txnDumper = context.actorOf(Props[])
+  val txnDumper = context.actorOf(Props[TransactionDumper])
 
 
   def receive = {
@@ -75,7 +77,6 @@ class LineRouter extends Actor {
     var response = entry.response.trim
     val timestamp = entry.timeStamp
 
-    logger.info(s"txn $reqNo has request $request and response $response")
     if(request.trim() == "") {
       logger.debug(s"skipping $reqNo - no request")
       skipped += 1
@@ -90,12 +91,9 @@ class LineRouter extends Actor {
         response = "<truncated/>"
       }
 
-      logger.info(s"request $reqNo: $timestamp $request $response")
-      println(s"$reqNo|$timestamp|$service|$request|$response")
+
+      txnDumper ! TxnSpec(persistTxns, reqNo, timestamp, service, request, response)
       processedCount += 1
-      if(persistTxns) {
-        persist(timestamp, service, request, response)
-      }
 
     }
   }
@@ -131,12 +129,16 @@ class LineRouter extends Actor {
 
 }
 
-case class TxnSpec(persist: Boolean, ts: Double, serviceName: String, request: String, response: String)
+case class TxnSpec(persist: Boolean, reqNo: String, ts: Double, serviceName: String, request: String, response: String)
 
 class TransactionDumper extends Actor {
   def receive = {
-    case TxnSpec(persist, ts, serviceName, request, response) =>
-
+    case TxnSpec(persistTxn, reqNo, timestamp, serviceName, request, response) =>
+      logger.info(s"request $reqNo: $timestamp $request $response")
+      //println(s"$reqNo|$timestamp|$serviceName|$request|$response")
+      if(persistTxn) {
+        persist(timestamp, serviceName, request, response)
+      }
 
   }
 }

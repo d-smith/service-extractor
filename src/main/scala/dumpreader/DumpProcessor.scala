@@ -37,6 +37,7 @@ object DumpProcessor extends App {
   }
 
   lineRouter ! PrintStats
+  system.shutdown()
 
   def processLine(line: String) {
     extractLineSpec(line) match {
