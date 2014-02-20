@@ -2,7 +2,8 @@
 ssldump.raw.txt
 multiTruncatedByHandshake.txt
 multiWithChunk.txt
-
+*.jar
+*.class
 
 #atomikos txn logs
 *.epoch

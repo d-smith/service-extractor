@@ -32,7 +32,7 @@ class LineRouter extends Actor {
   var processedCount = 0
   var persistTxns = false
 
-  val txnDumper = context.actorOf(Props[TransactionDumper] /*.withRouter(FromConfig()), "dump-router"*/)
+  val txnDumper = context.actorOf(Props[TransactionDumper].withRouter(FromConfig()), "dump-router")
 
 
   def receive = {
@@ -119,7 +119,9 @@ class LineRouter extends Actor {
       xml.XML.loadString(xmlString)
       true
     } catch {
-      case _: Throwable => false
+      case t: Throwable =>
+        logger.info(s"Problem with response: ${t.getMessage} - $xmlString")
+        false
     }
   }
 

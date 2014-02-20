@@ -16,7 +16,7 @@ object DumpProcessor extends App {
 
   implicit val timeout: Timeout = 2 seconds
   val system = ActorSystem()
-  val lineRouter = system.actorOf(Props[LineRouter])
+  val lineRouter = system.actorOf(Props[LineRouter], "line-router")
 
   if(args.length != 1 && args.length != 4) throw new Error("Need filename arg and optionally db user, password and url")
   if(args.length == 4) {
@@ -37,7 +37,7 @@ object DumpProcessor extends App {
   }
 
   lineRouter ! PrintStats
-  system.shutdown()
+  //system.shutdown() - need to defer shutdown until mailboxes are drained
 
   def processLine(line: String) {
     extractLineSpec(line) match {
