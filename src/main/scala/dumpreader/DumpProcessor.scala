@@ -2,24 +2,31 @@ package dumpreader
 
 import java.io.File
 import org.slf4j.LoggerFactory
-
+import akka.actor.{Props, ActorSystem}
+import scala.concurrent.Await
+import concurrent.duration._
+import akka.pattern.ask
+import akka.util.Timeout
 
 object DumpProcessor extends App {
-  import LineRouter._
   import Persistor.setDBCredentials
 
   val logger = LoggerFactory.getLogger(this.getClass)
   val lineSeparator = System.getProperty("line.separator")
 
+  implicit val timeout: Timeout = 2 seconds
+  val system = ActorSystem()
+  val lineRouter = system.actorOf(Props[LineRouter])
+
   if(args.length != 1 && args.length != 4) throw new Error("Need filename arg and optionally db user, password and url")
   if(args.length == 4) {
-    persistOnDump()
+    lineRouter ! PersistTxns
     setDBCredentials(user = args(1), password = args(2), url = args(3))
   }
 
   def shutdownHook() : Unit = {
-    println(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
-    System.exit(0)
+    lineRouter ! PrintStats
+    system.shutdown()
   }
 
   val lineProcessor = LineProcessor(new File(args(0)), shutdownHook)
@@ -29,7 +36,7 @@ object DumpProcessor extends App {
      processLine(line)
   }
 
-  println(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
+  lineRouter ! PrintStats
 
   def processLine(line: String) {
     extractLineSpec(line) match {
@@ -50,7 +57,9 @@ object DumpProcessor extends App {
   }
 
   def processApplicationData(requestNo: String) {
-    if(!hasRequest(requestNo))
+    val future = (lineRouter ? HasRequest(requestNo)).mapTo[Boolean]
+    val hasRequest = Await.result(future, 2 seconds)
+    if(!hasRequest)
       processRequest(requestNo)
     else
       processResponse(requestNo)
@@ -62,7 +71,7 @@ object DumpProcessor extends App {
       var envelope2 = false
       var done = false
       while(!done) {
-        routeLine(new RequestData(requestNo, appDataLine))
+        lineRouter ! RequestData(requestNo, appDataLine)
         appDataLine = " " + lineProcessor.readLine().trim()
         if(appDataLine.contains("Envelope") && !envelope2) envelope2 = true
         else if(appDataLine.trim() =="" && envelope2) done = true
@@ -91,8 +100,7 @@ object DumpProcessor extends App {
 
           responseData = removeTrailingDashes(requestNo, responseData)
 
-
-         routeLine(ResponseDataPart(requestNo,responseData))
+         lineRouter ! ResponseDataPart(requestNo,responseData)
          lineProcessor.putReadLine(line)
          doneReadingResponseData = true
 
@@ -104,7 +112,7 @@ object DumpProcessor extends App {
 
           responseData = removeTrailingDashes(requestNo, responseData)
 
-          routeLine(LastResponseDataPart(requestNo,responseData))
+          lineRouter ! LastResponseDataPart(requestNo,responseData)
           doneReadingResponseData = true
         } else {
           lines = lines :+ line
@@ -113,7 +121,7 @@ object DumpProcessor extends App {
 
     } else {
       if(appDataLine.length() > 4 && appDataLine.trim.equals("0")) {
-        routeLine(LastResponseDataPart(requestNo, ""))
+        lineRouter ! LastResponseDataPart(requestNo, "")
       } else {
         var dataLine = appDataLine
         if(isChunkSizeLine(dataLine)) {
@@ -121,7 +129,7 @@ object DumpProcessor extends App {
         }
 
         dataLine = removeTrailingDashes(requestNo, dataLine)
-        routeLine(ResponseDataPart(requestNo, dataLine.trim()))
+        lineRouter ! ResponseDataPart(requestNo, dataLine.trim())
       }
 
     }
@@ -160,7 +168,7 @@ object DumpProcessor extends App {
   def processStartOfNewRequest(callNo: String, line: String) {
     val connLine = line.split("\\s+")
     val timestamp = doubleFromTimestamp(connLine(2))
-    routeLine(NewServiceCall(callNo, timestamp))
+    lineRouter ! NewServiceCall(callNo, timestamp)
   }
 
   def applicationDataFollows(line: String) : Boolean = {

@@ -2,6 +2,7 @@ package dumpreader
 
 import scala.xml.Node
 import org.slf4j.LoggerFactory
+import akka.actor.Actor
 
 
 sealed trait RouterEvent
@@ -14,7 +15,13 @@ case class Transaction(timeStamp: Double, request: String = "", response: String
   def hasRequest() : Boolean = !request.equals("")
 }
 
-object LineRouter {
+sealed trait RouterQuery
+case class HasRequest(routeNo: String)
+
+case object PersistTxns
+case object PrintStats
+
+class LineRouter extends Actor {
   import Persistor.persist
 
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -23,9 +30,10 @@ object LineRouter {
   var processedCount = 0
   var persistTxns = false
 
+  //val txnDumper = context.actorOf(Props[])
 
-  def routeLine(event: RouterEvent) {
-    event match {
+
+  def receive = {
       case NewServiceCall(reqNo, ts) =>
         logger.debug(s"New request $reqNo at $ts")
         txnMap += (reqNo -> Transaction(ts))
@@ -52,10 +60,14 @@ object LineRouter {
             txnMap += (reqNo -> Transaction(0,"", data))
         }
         dumpTxn(reqNo)
-    }
+
+      case PersistTxns => persistTxns = true
+      case PrintStats => println(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
+
+      case HasRequest(reqNo) => sender ! hasRequest(reqNo)
   }
 
-  def dumpTxn(reqNo: String) {
+  private def dumpTxn(reqNo: String) {
     val entry = txnMap.get(reqNo).get
     txnMap -= (reqNo)
 
@@ -88,23 +100,23 @@ object LineRouter {
     }
   }
 
-  def extractServiceName(request: String) : String = {
+  private def extractServiceName(request: String) : String = {
     val xmlRep = xml.XML.loadString(request)
     val body: Node = (xmlRep \\ "Envelope" \ "Body") head
     val service = body.child.head.label
     service
   }
 
-  def hasRequest(requestNo: String) : Boolean = {
+  private def hasRequest(requestNo: String) : Boolean = {
     txnMap.get(requestNo) match {
       case Some(txn) => txn.hasRequest()
       case None => true
     }
   }
 
-  def trimGaps(xml: String) : String = xml.replaceAll("> <", "><")
+  private def trimGaps(xml: String) : String = xml.replaceAll("> <", "><")
 
-  def isWellformed(xmlString: String) : Boolean = {
+  private def isWellformed(xmlString: String) : Boolean = {
     try {
       xml.XML.loadString(xmlString)
       true
@@ -113,10 +125,18 @@ object LineRouter {
     }
   }
 
-  def getMalformedCount() : Int = skipped
-  def getProcessedCount() : Int = processedCount
+  private def getMalformedCount() : Int = skipped
+  private def getProcessedCount() : Int = processedCount
 
-  def persistOnDump() {
-    persistTxns = true
+
+}
+
+case class TxnSpec(persist: Boolean, ts: Double, serviceName: String, request: String, response: String)
+
+class TransactionDumper extends Actor {
+  def receive = {
+    case TxnSpec(persist, ts, serviceName, request, response) =>
+
+
   }
 }

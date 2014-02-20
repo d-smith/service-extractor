@@ -7,12 +7,20 @@
 	<name>SSL Dump Extractor</name>
 	
     <properties>
-        <scala.version>2.10.0</scala.version>
+        <scala.version>2.10.3</scala.version>
 		<scalatest.version>1.9.1</scalatest.version>
         <slf4j.version>1.7.6</slf4j.version>
+        <akka.version>2.2.3</akka.version>
     </properties>
  
     <dependencies>
+
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-actor_2.10</artifactId>
+            <version>${akka.version}</version>
+        </dependency>
+
 
         <dependency>
             <groupId>com.oracle</groupId>
