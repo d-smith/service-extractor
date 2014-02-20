@@ -3,7 +3,6 @@ package dumpreader
 import scala.xml.Node
 import org.slf4j.LoggerFactory
 import akka.actor.{Props, Actor}
-import dumpreader.Persistor._
 import scala.Some
 import akka.routing.FromConfig
 
@@ -21,18 +20,20 @@ case class Transaction(timeStamp: Double, request: String = "", response: String
 sealed trait RouterQuery
 case class HasRequest(routeNo: String)
 
-case object PersistTxns
 case object PrintStats
 
-class LineRouter extends Actor {
+object LineRouter {
+  def props(dbConnectInfo: DBConnectInfo) : Props =  Props(classOf[LineRouter], dbConnectInfo)
+}
+
+class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor {
 
   val logger = LoggerFactory.getLogger(this.getClass)
   var txnMap = Map[String, Transaction]()
   var skipped = 0
   var processedCount = 0
-  var persistTxns = false
 
-  val txnDumper = context.actorOf(Props[TransactionDumper].withRouter(FromConfig()), "dump-router")
+  val txnDumper = context.actorOf(TransactionDumper.props(dbConnectInfo).withRouter(FromConfig()), "dump-router")
 
 
   def receive = {
@@ -63,7 +64,6 @@ class LineRouter extends Actor {
         }
         dumpTxn(reqNo)
 
-      case PersistTxns => persistTxns = true
       case PrintStats => logger.info(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
 
       case HasRequest(reqNo) => sender ! hasRequest(reqNo)
@@ -92,7 +92,7 @@ class LineRouter extends Actor {
       }
 
 
-      txnDumper ! TxnSpec(persistTxns, reqNo, timestamp, service, request, response)
+      txnDumper ! TxnSpec(reqNo, timestamp, service, request, response)
       processedCount += 1
 
     }
@@ -131,15 +131,24 @@ class LineRouter extends Actor {
 
 }
 
-case class TxnSpec(persist: Boolean, reqNo: String, ts: Double, serviceName: String, request: String, response: String)
+case class TxnSpec(reqNo: String, ts: Double, serviceName: String, request: String, response: String)
 
-class TransactionDumper extends Actor {
+object TransactionDumper {
+  def props(dbConnectInfo: DBConnectInfo) : Props =  Props(classOf[TransactionDumper], dbConnectInfo)
+}
+
+class TransactionDumper(dbConnectInfo: DBConnectInfo) extends Actor {
+  val logger = LoggerFactory.getLogger(this.getClass)
+  val persitor: Persistor = dbConnectInfo match {
+    case oraConnectInfo: OracleConnectInfo => new OraclePersistor(oraConnectInfo)
+    case _ => new NoopPersistor
+  }
+
+
   def receive = {
-    case TxnSpec(persistTxn, reqNo, timestamp, serviceName, request, response) =>
+    case TxnSpec(reqNo, timestamp, serviceName, request, response) =>
       logger.info(s"request $reqNo: $timestamp $request $response")
-      if(persistTxn) {
-        persist(timestamp, serviceName, request, response)
-      }
+      persitor.persist(timestamp, serviceName, request, response)
 
   }
 }

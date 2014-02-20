@@ -9,20 +9,22 @@ import akka.pattern.ask
 import akka.util.Timeout
 
 object DumpProcessor extends App {
-  import Persistor.setDBCredentials
 
   val logger = LoggerFactory.getLogger(this.getClass)
   val lineSeparator = System.getProperty("line.separator")
 
   implicit val timeout: Timeout = 2 seconds
   val system = ActorSystem()
-  val lineRouter = system.actorOf(Props[LineRouter], "line-router")
+
+
+  var dbConnectInfo:DBConnectInfo = NoDBConnection
 
   if(args.length != 1 && args.length != 4) throw new Error("Need filename arg and optionally db user, password and url")
   if(args.length == 4) {
-    lineRouter ! PersistTxns
-    setDBCredentials(user = args(1), password = args(2), url = args(3))
+    dbConnectInfo = OracleConnectInfo(user = args(1), password = args(2), url = args(3))
   }
+
+  val lineRouter = system.actorOf(LineRouter.props(dbConnectInfo), "line-router")
 
   def shutdownHook() : Unit = {
     lineRouter ! PrintStats

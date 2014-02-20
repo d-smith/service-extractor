@@ -3,19 +3,29 @@ package dumpreader
 import java.sql.{PreparedStatement, DriverManager, Connection}
 import org.slf4j.LoggerFactory
 
-object Persistor {
-  var connection: Connection = _
+trait DBConnectInfo
+case object NoDBConnection extends DBConnectInfo
+case class OracleConnectInfo(user: String, password: String, url: String) extends DBConnectInfo
+
+trait Persistor {
+  def persist(timestamp: Double, serviceName: String, request: String, response: String)
+}
+
+class NoopPersistor extends Persistor {
+  def persist(timestamp: Double, serviceName: String, request: String, response: String) {}
+}
+
+class OraclePersistor(connectionInfo: OracleConnectInfo) extends Persistor{
+  val connection: Connection =
+    DriverManager.getConnection(connectionInfo.url,
+      connectionInfo.user, connectionInfo.password)
+
   val insertSQL = "insert into service_call_dump (txn_timestamp, service_name, request, response) values (?,?,XMLType(?),XMLType(?))"
   val logger = LoggerFactory.getLogger(this.getClass)
-  var preparedStmt:PreparedStatement = _
-
-  def setDBCredentials(user: String, password: String, url: String) {
-    connection = DriverManager.getConnection(url, user, password)
-  }
+  val preparedStmt:PreparedStatement = connection.prepareStatement(insertSQL)
 
   def persist(timestamp: Double, serviceName: String, request: String, response: String) {
     try {
-      val preparedStmt = connection.prepareStatement(insertSQL)
       preparedStmt.setDouble(1, timestamp)
       preparedStmt.setString(2, serviceName)
 
@@ -28,7 +38,6 @@ object Persistor {
       preparedStmt.setClob(4, responseClob)
 
       preparedStmt.executeUpdate()
-      preparedStmt.close()
     } catch {
       case t:Throwable =>
         logger.warn(s"caught exception ${t.getMessage} for $timestamp, $serviceName, $request, $response")
