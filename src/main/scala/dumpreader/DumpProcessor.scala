@@ -9,12 +9,12 @@ import akka.pattern.ask
 import akka.util.Timeout
 
 object DumpProcessor extends App {
+  try {
 
   val logger = LoggerFactory.getLogger(this.getClass)
   val lineSeparator = System.getProperty("line.separator")
 
-  implicit val timeout: Timeout = 2 seconds
-  val system = ActorSystem()
+
 
 
   var dbConnectInfo:DBConnectInfo = NoDBConnection
@@ -24,6 +24,8 @@ object DumpProcessor extends App {
     dbConnectInfo = OracleConnectInfo(user = args(1), password = args(2), url = args(3))
   }
 
+  implicit val timeout: Timeout = 2 seconds
+  val system = ActorSystem()
   val lineRouter = system.actorOf(LineRouter.props(dbConnectInfo), "line-router")
 
   def shutdownHook() : Unit = {
@@ -39,7 +41,9 @@ object DumpProcessor extends App {
   }
 
   lineRouter ! PrintStats
+  lineRouter ! Shutdown
   //system.shutdown() - need to defer shutdown until mailboxes are drained
+
 
   def processLine(line: String) {
     extractLineSpec(line) match {
@@ -205,5 +209,12 @@ object DumpProcessor extends App {
       case x if x < 2 => false
       case _ => if(allDigits(splitLine(0)) && allDigits(splitLine(1))) true else false
     }
+  }
+
+
+  } catch {
+    case t:Throwable =>
+      t.printStackTrace()
+      System.exit(1)
   }
 }

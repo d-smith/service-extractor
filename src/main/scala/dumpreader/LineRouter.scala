@@ -2,9 +2,11 @@ package dumpreader
 
 import scala.xml.Node
 import org.slf4j.LoggerFactory
-import akka.actor.{Props, Actor}
+import akka.actor.{PoisonPill, ActorRef, Props, Actor}
 import scala.Some
 import akka.routing.FromConfig
+import akka.dispatch.sysmsg.Watch
+import dumpreader.Reaper.WatchMe
 
 
 sealed trait RouterEvent
@@ -21,6 +23,7 @@ sealed trait RouterQuery
 case class HasRequest(routeNo: String)
 
 case object PrintStats
+case object Shutdown
 
 object LineRouter {
   def props(dbConnectInfo: DBConnectInfo) : Props =  Props(classOf[LineRouter], dbConnectInfo)
@@ -32,8 +35,9 @@ class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor {
   var txnMap = Map[String, Transaction]()
   var skipped = 0
   var processedCount = 0
-
-  val txnDumper = context.actorOf(TransactionDumper.props(dbConnectInfo).withRouter(FromConfig()), "dump-router")
+  val reaper = context.actorOf(Props[AllPersistedReaper])
+  val txnDumper = context.actorOf(TransactionDumper.props(dbConnectInfo,reaper)
+                      .withRouter(FromConfig()), "dump-router")
 
 
   def receive = {
@@ -67,6 +71,8 @@ class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor {
       case PrintStats => logger.info(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
 
       case HasRequest(reqNo) => sender ! hasRequest(reqNo)
+
+      case Shutdown => context.system.actorSelection("/user/line-router/dump-router/*") ! PoisonPill
   }
 
   private def dumpTxn(reqNo: String) {
@@ -134,15 +140,18 @@ class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor {
 case class TxnSpec(reqNo: String, ts: Double, serviceName: String, request: String, response: String)
 
 object TransactionDumper {
-  def props(dbConnectInfo: DBConnectInfo) : Props =  Props(classOf[TransactionDumper], dbConnectInfo)
+  def props(dbConnectInfo: DBConnectInfo, reaper: ActorRef) : Props =  Props(classOf[TransactionDumper], dbConnectInfo, reaper)
 }
 
-class TransactionDumper(dbConnectInfo: DBConnectInfo) extends Actor {
+class TransactionDumper(dbConnectInfo: DBConnectInfo, reaper: ActorRef) extends Actor {
   val logger = LoggerFactory.getLogger(this.getClass)
   val persitor: Persistor = dbConnectInfo match {
     case oraConnectInfo: OracleConnectInfo => new OraclePersistor(oraConnectInfo)
     case _ => new NoopPersistor
   }
+
+  println("REGISTER WITH REAPER")
+  reaper ! WatchMe(self)
 
 
   def receive = {
