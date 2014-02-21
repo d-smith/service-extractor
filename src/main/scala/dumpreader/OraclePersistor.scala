@@ -16,6 +16,7 @@ class NoopPersistor extends Persistor {
 }
 
 class OraclePersistor(connectionInfo: OracleConnectInfo) extends Persistor with Logging {
+  Class.forName("oracle.jdbc.OracleDriver");
   val connection: Connection =
     DriverManager.getConnection(connectionInfo.url,
       connectionInfo.user, connectionInfo.password)
