@@ -23,7 +23,7 @@ object DumpProcessor extends App with Logging {
     dbConnectInfo = OracleConnectInfo(user = args(1), password = args(2), url = args(3))
   }
 
-  implicit val timeout: Timeout = 2 seconds
+  implicit val timeout: Timeout = 30 seconds
   val system = ActorSystem()
   val lineRouter = system.actorOf(LineRouter.props(dbConnectInfo), "line-router")
 
@@ -64,7 +64,7 @@ object DumpProcessor extends App with Logging {
 
   def processApplicationData(requestNo: String) {
     val future = (lineRouter ? HasRequest(requestNo)).mapTo[Boolean]
-    val hasRequest = Await.result(future, 2 seconds)
+    val hasRequest = Await.result(future, 30 seconds) //First read slooow on target machine
     if(!hasRequest)
       processRequest(requestNo)
     else

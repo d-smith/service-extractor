@@ -16,13 +16,18 @@ class NoopPersistor extends Persistor {
 }
 
 class OraclePersistor(connectionInfo: OracleConnectInfo) extends Persistor with Logging {
+  logger.info("loading database driver")
   Class.forName("oracle.jdbc.OracleDriver");
+  logger.info("driver loaded - connect to db")
   val connection: Connection =
     DriverManager.getConnection(connectionInfo.url,
       connectionInfo.user, connectionInfo.password)
+  logger.info("connected to db - prepare statment")
+
 
   val insertSQL = "insert into service_call_dump (txn_timestamp, service_name, request, response) values (?,?,XMLType(?),XMLType(?))"
   val preparedStmt:PreparedStatement = connection.prepareStatement(insertSQL)
+  logger.info("Statement prepared - ready to perist")
 
   def persist(timestamp: Double, serviceName: String, request: String, response: String) {
     try {
