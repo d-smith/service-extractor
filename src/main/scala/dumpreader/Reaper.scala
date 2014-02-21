@@ -9,7 +9,7 @@ object Reaper {
   case class WatchMe(ref: ActorRef)
 }
 
-abstract class Reaper extends Actor {
+abstract class Reaper extends Actor with Logging {
   import Reaper._
 
   // Keep track of what we're watching
@@ -22,11 +22,11 @@ abstract class Reaper extends Actor {
   // Watch and check for termination
   final def receive = {
     case WatchMe(ref) =>
-      println(s"watching $ref")
+      logger.info(s"Reaper watching $ref")
       context.watch(ref)
       watched += ref
     case Terminated(ref) =>
-      println(s"reaping $ref")
+      logger.info(s"Reaping $ref")
       watched -= ref
       if (watched.isEmpty) allSoulsReaped()
   }

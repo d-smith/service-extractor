@@ -29,9 +29,8 @@ object LineRouter {
   def props(dbConnectInfo: DBConnectInfo) : Props =  Props(classOf[LineRouter], dbConnectInfo)
 }
 
-class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor {
+class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor with Logging {
 
-  val logger = LoggerFactory.getLogger(this.getClass)
   var txnMap = Map[String, Transaction]()
   var skipped = 0
   var processedCount = 0
@@ -105,10 +104,16 @@ class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor {
   }
 
   private def extractServiceName(request: String) : String = {
-    val xmlRep = xml.XML.loadString(request)
-    val body: Node = (xmlRep \\ "Envelope" \ "Body") head
-    val service = body.child.head.label
-    service
+    try {
+      val xmlRep = xml.XML.loadString(request)
+      val body: Node = (xmlRep \\ "Envelope" \ "Body") head
+      val service = body.child.head.label
+      service
+    } catch {
+      case t:Throwable =>
+        logger.warn(s"Unable to extract service name - problem: ${t.getMessage} - request $request")
+        "UnknownService"
+    }
   }
 
   private def hasRequest(requestNo: String) : Boolean = {
@@ -126,7 +131,7 @@ class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor {
       true
     } catch {
       case t: Throwable =>
-        logger.info(s"Problem with response: ${t.getMessage} - $xmlString")
+        logger.warn(s"Problem with response: ${t.getMessage} - $xmlString")
         false
     }
   }
@@ -143,8 +148,7 @@ object TransactionDumper {
   def props(dbConnectInfo: DBConnectInfo, reaper: ActorRef) : Props =  Props(classOf[TransactionDumper], dbConnectInfo, reaper)
 }
 
-class TransactionDumper(dbConnectInfo: DBConnectInfo, reaper: ActorRef) extends Actor {
-  val logger = LoggerFactory.getLogger(this.getClass)
+class TransactionDumper(dbConnectInfo: DBConnectInfo, reaper: ActorRef) extends Actor with Logging {
   val persitor: Persistor = dbConnectInfo match {
     case oraConnectInfo: OracleConnectInfo => new OraclePersistor(oraConnectInfo)
     case _ => new NoopPersistor

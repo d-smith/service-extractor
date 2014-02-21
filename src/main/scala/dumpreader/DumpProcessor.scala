@@ -8,10 +8,9 @@ import concurrent.duration._
 import akka.pattern.ask
 import akka.util.Timeout
 
-object DumpProcessor extends App {
+object DumpProcessor extends App with Logging {
   try {
 
-  val logger = LoggerFactory.getLogger(this.getClass)
   val lineSeparator = System.getProperty("line.separator")
 
 
