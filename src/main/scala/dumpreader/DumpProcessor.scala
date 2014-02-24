@@ -33,6 +33,7 @@ object DumpProcessor extends App with Logging {
   }
 
   val lineProcessor = LineProcessor(new File(args(0)), shutdownHook)
+  logger.warn(s"Processing ${args(0)}")
 
   while(lineProcessor.moreLines()) {
     val line = lineProcessor.readLine

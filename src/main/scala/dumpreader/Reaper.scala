@@ -22,11 +22,11 @@ abstract class Reaper extends Actor with Logging {
   // Watch and check for termination
   final def receive = {
     case WatchMe(ref) =>
-      logger.info(s"Reaper watching $ref")
+      logger.warn(s"Reaper watching $ref")
       context.watch(ref)
       watched += ref
     case Terminated(ref) =>
-      logger.info(s"Reaping $ref")
+      logger.warn(s"Reaping $ref")
       watched -= ref
       if (watched.isEmpty) allSoulsReaped()
   }

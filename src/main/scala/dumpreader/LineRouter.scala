@@ -67,7 +67,7 @@ class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor with Logging {
         }
         dumpTxn(reqNo)
 
-      case PrintStats => logger.info(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
+      case PrintStats => logger.warn(s"skipped ${getMalformedCount()} processed ${getProcessedCount()}")
 
       case HasRequest(reqNo) => sender ! hasRequest(reqNo)
 
@@ -91,7 +91,8 @@ class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor with Logging {
 
       logger.debug(s"service is ${service}" )
       if(!isWellformed(response)) {
-        logger.warn(s"Response is not well-formed for request $reqNo: $response")
+        logger.warn(s"Response is not well-formed for request $reqNo")
+        if(logger.isInfoEnabled()) logger.info(s"Response for $reqNo is $response")
         skipped += 1
         response = "<truncated/>"
       }
@@ -112,6 +113,7 @@ class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor with Logging {
     } catch {
       case t:Throwable =>
         logger.warn(s"Unable to extract service name - problem: ${t.getMessage} - request $request")
+        if(logger.isInfoEnabled()) logger.info(s"problem request is $request")
         "UnknownService"
     }
   }
@@ -131,7 +133,7 @@ class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor with Logging {
       true
     } catch {
       case t: Throwable =>
-        logger.warn(s"Problem with response: ${t.getMessage} - $xmlString")
+        logger.warn(s"Problem parsing response: ${t.getMessage}")
         false
     }
   }
@@ -160,7 +162,7 @@ class TransactionDumper(dbConnectInfo: DBConnectInfo, reaper: ActorRef) extends 
 
   def receive = {
     case TxnSpec(reqNo, timestamp, serviceName, request, response) =>
-      logger.info(s"request $reqNo: $timestamp $request $response")
+      logger.debug(s"request $reqNo: $timestamp $request $response")
       persistor.persist(timestamp, serviceName, request, response)
 
   }

@@ -45,7 +45,8 @@ class OraclePersistor(connectionInfo: OracleConnectInfo) extends Persistor with 
       preparedStmt.executeUpdate()
     } catch {
       case t:Throwable =>
-        logger.warn(s"caught exception ${t.getMessage} for $timestamp, $serviceName, $request, $response")
+        logger.warn(s"caught exception ${t.getMessage} persisting $timestamp, $serviceName")
+        if(logger.isInfoEnabled()) logger.info(s"Persist error request and response: $request, $response")
     }
 
   }
