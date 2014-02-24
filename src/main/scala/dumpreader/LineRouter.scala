@@ -154,7 +154,7 @@ class TransactionDumper(dbConnectInfo: DBConnectInfo, reaper: ActorRef) extends 
     case _ => new NoopPersistor
   }
 
-  println("REGISTER WITH REAPER")
+  logger.info("Register with reaper")
   reaper ! WatchMe(self)
 
 
