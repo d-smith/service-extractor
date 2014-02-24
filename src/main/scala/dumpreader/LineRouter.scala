@@ -149,7 +149,7 @@ object TransactionDumper {
 }
 
 class TransactionDumper(dbConnectInfo: DBConnectInfo, reaper: ActorRef) extends Actor with Logging {
-  val persitor: Persistor = dbConnectInfo match {
+  val persistor: Persistor = dbConnectInfo match {
     case oraConnectInfo: OracleConnectInfo => new OraclePersistor(oraConnectInfo)
     case _ => new NoopPersistor
   }
@@ -161,7 +161,7 @@ class TransactionDumper(dbConnectInfo: DBConnectInfo, reaper: ActorRef) extends 
   def receive = {
     case TxnSpec(reqNo, timestamp, serviceName, request, response) =>
       logger.info(s"request $reqNo: $timestamp $request $response")
-      persitor.persist(timestamp, serviceName, request, response)
+      persistor.persist(timestamp, serviceName, request, response)
 
   }
 }
