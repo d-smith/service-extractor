@@ -1,4 +1,8 @@
+# Service Extractor
+
 Extract SOAP transactions from SSL dump.
+
+## Build and Run
 
 To build an executable package that includes all the binaries, use:
 
@@ -34,7 +38,7 @@ At this point you are ready to process the files.
 
     ./extract-from-files.sh /path/to/files/*
 
-
+## Implementation Notes
 
 Some things to note on extracting transactions from the network dump:
 
