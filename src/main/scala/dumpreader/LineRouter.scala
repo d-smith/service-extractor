@@ -71,7 +71,15 @@ class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor with Logging {
 
       case HasRequest(reqNo) => sender ! hasRequest(reqNo)
 
-      case Shutdown => context.system.actorSelection("/user/line-router/dump-router/*") ! PoisonPill
+      case Shutdown => shutdown()
+  }
+
+  private def shutdown() {
+    logger.warn(s"dumping ${txnMap.size} partial transactions")
+    txnMap.keys.foreach {
+      k => dumpTxn(k)
+    }
+    context.system.actorSelection("/user/line-router/dump-router/*") ! PoisonPill
   }
 
   private def dumpTxn(reqNo: String) {
@@ -93,7 +101,6 @@ class LineRouter(dbConnectInfo: DBConnectInfo) extends Actor with Logging {
       if(!isWellformed(response)) {
         logger.warn(s"Response is not well-formed for request $reqNo")
         if(logger.isInfoEnabled()) logger.info(s"Response for $reqNo is $response")
-        skipped += 1
         response = "<truncated/>"
       }
 
